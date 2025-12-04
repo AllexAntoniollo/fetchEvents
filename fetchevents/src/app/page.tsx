@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { valuePaid, valueReceived } from "./services/Web3Service";
+import { getLiquidity, valuePaid, valueReceived } from "./services/Web3Service";
 
 export default function Home() {
   // Estados para os blocos
@@ -9,12 +9,12 @@ export default function Home() {
   const [toBlock, setToBlock] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Estado para os resultados
   const [summary, setSummary] = useState({
     paymentCount: 0,
     receiptCount: 0,
     totalPaid: BigInt(0),
     totalReceived: BigInt(0),
+    liquidity: 0,
   });
 
   const handleSubmit = async (event: FormEvent) => {
@@ -30,11 +30,13 @@ export default function Home() {
     try {
       const tx = await valuePaid(Number(fromBlock), Number(toBlock));
       const events = await valueReceived(Number(fromBlock), Number(toBlock));
+      const liquidity = await getLiquidity();
       setSummary({
         paymentCount: tx.qtd,
         receiptCount: events.qtd,
         totalPaid: tx.valuePaid,
         totalReceived: events.valueReceived,
+        liquidity: liquidity.usdcValue,
       });
     } catch (error) {
       console.error("Erro ao buscar eventos:", error);
@@ -159,8 +161,16 @@ export default function Home() {
             <h2 className="text-xl font-semibold text-gray-800 mb-6">
               Resultados
             </h2>
-
-            <div className="space-y-6">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-500">Liquidez Total na Pool</p>
+              <p className="text-2xl font-bold text-green-900">
+                {summary.liquidity.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+            </div>
+            <div className="space-y-6 mt-6">
               {/* Resumo Geral */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
