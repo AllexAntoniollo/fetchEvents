@@ -9,6 +9,11 @@ const abi = [
   "function positions(uint256 tokenId) view returns (uint96 nonce, address operator, address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)",
 ];
 
+const RPCBNB = "https://bsc.blockrazor.xyz";
+
+// PancakeSwap V3 Position Manager
+const POSITION_MANAGERBNB = "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364";
+
 export async function valuePaid(fromBlock: number, toBlock: number) {
   const provider = new ethers.JsonRpcProvider(RPC);
   const contract = new ethers.Contract(POSITION_MANAGER, abi, provider);
@@ -140,5 +145,52 @@ export async function getLiquidity() {
 
   return {
     usdcValue,
+  };
+}
+
+export async function valueReceivedBNB(fromBlock: number, toBlock: number) {
+  const provider = new ethers.JsonRpcProvider(RPCBNB);
+  const contract = new ethers.Contract(POSITION_MANAGERBNB, abi, provider);
+
+  const eventFilter = contract.filters.IncreaseLiquidity(654147);
+
+  const logs = await contract.queryFilter(eventFilter, fromBlock, toBlock);
+
+  let totalAmount0 = 0n;
+
+  for (const log of logs) {
+    if (log instanceof ethers.EventLog) {
+      totalAmount0 += log.args.amount0;
+    }
+  }
+
+  return {
+    qtd: logs.length,
+    valueReceived: totalAmount0 / BigInt(1e18),
+  };
+}
+
+// PancakeSwap V3 Position Manager
+
+export async function valuePaidBNB(fromBlock: number, toBlock: number) {
+  const provider = new ethers.JsonRpcProvider(RPCBNB);
+  const contract = new ethers.Contract(POSITION_MANAGERBNB, abi, provider);
+
+  // tokenId do NFT de liquidez
+  const eventFilter = contract.filters.DecreaseLiquidity(654147);
+
+  const logs = await contract.queryFilter(eventFilter, fromBlock, toBlock);
+
+  let totalAmount0 = 0n;
+
+  for (const log of logs) {
+    if (log instanceof ethers.EventLog) {
+      totalAmount0 += log.args.amount0;
+    }
+  }
+
+  return {
+    qtd: logs.length,
+    valuePaid: totalAmount0 / BigInt(1e18), // assume USDC/USDT 6 decimals
   };
 }
