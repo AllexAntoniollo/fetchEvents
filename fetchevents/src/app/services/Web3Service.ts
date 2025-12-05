@@ -171,6 +171,24 @@ export async function valueReceivedBNB(fromBlock: number, toBlock: number) {
 }
 
 // PancakeSwap V3 Position Manager
+export async function getBlockTimestamp(blockNumber: number) {
+  const provider = new ethers.JsonRpcProvider(RPC);
+  const block = await provider.getBlock(blockNumber);
+  if (!block) {
+    throw new Error(`Bloco ${blockNumber} não encontrado`);
+  }
+
+  return block.timestamp;
+}
+export async function getBlockTimestampBNB(blockNumber: number) {
+  const provider = new ethers.JsonRpcProvider(RPCBNB);
+  const block = await provider.getBlock(blockNumber);
+  if (!block) {
+    throw new Error(`Bloco ${blockNumber} não encontrado`);
+  }
+
+  return block.timestamp;
+}
 
 export async function valuePaidBNB(fromBlock: number, toBlock: number) {
   const provider = new ethers.JsonRpcProvider(RPCBNB);

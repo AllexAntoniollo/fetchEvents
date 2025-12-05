@@ -5,6 +5,7 @@ import {
   getLiquidity,
   valueReceivedBNB,
   valuePaidBNB,
+  getBlockTimestampBNB,
 } from "../services/Web3Service";
 
 export default function Home() {
@@ -19,7 +20,31 @@ export default function Home() {
     totalPaid: BigInt(0),
     totalReceived: BigInt(0),
     liquidity: 0,
+    fromTimestamp: 0,
+    toTimestamp: 0,
+    timeDiff: 0,
   });
+
+  function formatDate(ts: number) {
+    if (!ts) return "---";
+    const d = new Date(ts * 1000);
+    return d.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }
+
+  function formatDuration(secs: number) {
+    if (!secs || secs < 0) return "---";
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h}h ${m}m ${s}s`;
+  }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -35,12 +60,17 @@ export default function Home() {
       const tx = await valuePaidBNB(Number(fromBlock), Number(toBlock));
       const events = await valueReceivedBNB(Number(fromBlock), Number(toBlock));
       const liquidity = await getLiquidity();
+      const fromTs = await getBlockTimestampBNB(Number(fromBlock));
+      const toTs = await getBlockTimestampBNB(Number(toBlock));
       setSummary({
         paymentCount: tx.qtd,
         receiptCount: events.qtd,
         totalPaid: tx.valuePaid,
         totalReceived: events.valueReceived,
         liquidity: liquidity.usdcValue,
+        fromTimestamp: fromTs,
+        toTimestamp: toTs,
+        timeDiff: toTs - fromTs,
       });
     } catch (error) {
       console.error("Erro ao buscar eventos:", error);
@@ -220,19 +250,38 @@ export default function Home() {
               </div>
 
               {/* Intervalo de Blocos Atual */}
-              <div className="border-t pt-4 text-black!">
+              <div className="border-t pt-4 text-black">
                 <p className="text-sm text-gray-500 mb-2">
                   Intervalo Consultado:
                 </p>
+
                 <div className="flex items-center space-x-4">
+                  {/* Bloco inicial */}
                   <div>
                     <p className="text-xs text-gray-400">De</p>
                     <p className="font-medium">{fromBlock || "---"}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatDate(summary.fromTimestamp)}
+                    </p>
                   </div>
+
                   <div className="text-gray-300">→</div>
+
+                  {/* Bloco final */}
                   <div>
                     <p className="text-xs text-gray-400">Até</p>
                     <p className="font-medium">{toBlock || "---"}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatDate(summary.toTimestamp)}
+                    </p>
+                  </div>
+
+                  {/* Duração */}
+                  <div>
+                    <p className="text-xs text-gray-400">Duração</p>
+                    <p className="font-medium">
+                      {formatDuration(summary.timeDiff)}
+                    </p>
                   </div>
                 </div>
               </div>

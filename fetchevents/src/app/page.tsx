@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { getLiquidity, valuePaid, valueReceived } from "./services/Web3Service";
+import {
+  getBlockTimestamp,
+  getLiquidity,
+  valuePaid,
+  valueReceived,
+} from "./services/Web3Service";
 
 export default function Home() {
   // Estados para os blocos
@@ -15,7 +20,32 @@ export default function Home() {
     totalPaid: BigInt(0),
     totalReceived: BigInt(0),
     liquidity: 0,
+    fromTimestamp: 0,
+    toTimestamp: 0,
+    timeDiff: 0,
   });
+
+  // Formatadores
+  function formatDate(ts: number) {
+    if (!ts) return "---";
+    const d = new Date(ts * 1000);
+    return d.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }
+
+  function formatDuration(secs: number) {
+    if (!secs || secs < 0) return "---";
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h}h ${m}m ${s}s`;
+  }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -31,12 +61,20 @@ export default function Home() {
       const tx = await valuePaid(Number(fromBlock), Number(toBlock));
       const events = await valueReceived(Number(fromBlock), Number(toBlock));
       const liquidity = await getLiquidity();
+
+      // Buscar timestamps dos blocos
+      const fromTs = await getBlockTimestamp(Number(fromBlock));
+      const toTs = await getBlockTimestamp(Number(toBlock));
+
       setSummary({
         paymentCount: tx.qtd,
         receiptCount: events.qtd,
         totalPaid: tx.valuePaid,
         totalReceived: events.valueReceived,
         liquidity: liquidity.usdcValue,
+        fromTimestamp: fromTs,
+        toTimestamp: toTs,
+        timeDiff: toTs - fromTs,
       });
     } catch (error) {
       console.error("Erro ao buscar eventos:", error);
@@ -115,45 +153,9 @@ export default function Home() {
                     : "bg-blue-600 hover:bg-blue-700"
                 }`}
               >
-                {isLoading ? (
-                  <span className="flex items-center justify-center">
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Processando...
-                  </span>
-                ) : (
-                  "Consultar Transações"
-                )}
+                {isLoading ? "Processando..." : "Consultar Transações"}
               </button>
             </form>
-
-            <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-medium text-blue-800 mb-2">Como usar:</h3>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• Insira o número do bloco inicial</li>
-                <li>• Insira o número do bloco final</li>
-                <li>• Clique em "Consultar Transações"</li>
-                <li>• Os resultados aparecerão ao lado</li>
-              </ul>
-            </div>
           </div>
 
           {/* Resultados */}
@@ -161,6 +163,8 @@ export default function Home() {
             <h2 className="text-xl font-semibold text-gray-800 mb-6">
               Resultados
             </h2>
+
+            {/* Liquidez */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Liquidez Total na Pool</p>
               <p className="text-2xl font-bold text-green-900">
@@ -170,6 +174,7 @@ export default function Home() {
                 })}
               </p>
             </div>
+
             <div className="space-y-6 mt-6">
               {/* Resumo Geral */}
               <div className="grid grid-cols-2 gap-4">
@@ -223,20 +228,39 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Intervalo de Blocos Atual */}
-              <div className="border-t pt-4 text-black!">
+              {/* Intervalo Consultado */}
+              <div className="border-t pt-4 text-black">
                 <p className="text-sm text-gray-500 mb-2">
                   Intervalo Consultado:
                 </p>
+
                 <div className="flex items-center space-x-4">
+                  {/* Bloco inicial */}
                   <div>
                     <p className="text-xs text-gray-400">De</p>
                     <p className="font-medium">{fromBlock || "---"}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatDate(summary.fromTimestamp)}
+                    </p>
                   </div>
+
                   <div className="text-gray-300">→</div>
+
+                  {/* Bloco final */}
                   <div>
                     <p className="text-xs text-gray-400">Até</p>
                     <p className="font-medium">{toBlock || "---"}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatDate(summary.toTimestamp)}
+                    </p>
+                  </div>
+
+                  {/* Duração */}
+                  <div>
+                    <p className="text-xs text-gray-400">Duração</p>
+                    <p className="font-medium">
+                      {formatDuration(summary.timeDiff)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -244,12 +268,11 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Informações Adicionais */}
+        {/* Rodapé */}
         <div className="mt-8 text-center text-gray-500 text-sm">
           <p>
-            Dados processados em tempo real. Para uma implementação real,
-            conecte-se a um provedor blockchain como Ethereum, Polygon, ou outra
-            rede compatível.
+            Dados processados em tempo real. Para produção conecte-se a um
+            provedor blockchain.
           </p>
         </div>
       </div>
