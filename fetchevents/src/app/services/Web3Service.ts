@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 
-const RPC = "https://arb1.arbitrum.io/rpc";
+const RPC =
+  "https://arbitrum-mainnet.infura.io/v3/a04b6dce6551433197cced8567c655cf";
 const POSITION_MANAGER = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
 
 const abi = [
