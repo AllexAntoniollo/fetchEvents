@@ -113,10 +113,10 @@ function getSqrtRatioAtTick(tick: number): bigint {
   if (tick > 0) {
     ratio = mulDiv(
       BigInt(
-        "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
       ),
       ratio,
-      Q128
+      Q128,
     );
   }
 
@@ -153,20 +153,29 @@ export async function valueReceivedBNB(fromBlock: number, toBlock: number) {
   const provider = new ethers.JsonRpcProvider(RPCBNB);
   const contract = new ethers.Contract(POSITION_MANAGERBNB, abi, provider);
 
-  const eventFilter = contract.filters.IncreaseLiquidity(654147);
+  const eventFilter = contract.filters.IncreaseLiquidity(6141533);
 
-  const logs = await contract.queryFilter(eventFilter, fromBlock, toBlock);
+  const logsUsdc = await contract.queryFilter(eventFilter, fromBlock, toBlock);
 
   let totalAmount0 = 0n;
 
-  for (const log of logs) {
+  for (const log of logsUsdc) {
+    if (log instanceof ethers.EventLog) {
+      totalAmount0 += log.args.amount1;
+    }
+  }
+
+  const eventFilter2 = contract.filters.IncreaseLiquidity(6141508);
+
+  const logsUsdt = await contract.queryFilter(eventFilter2, fromBlock, toBlock);
+
+  for (const log of logsUsdt) {
     if (log instanceof ethers.EventLog) {
       totalAmount0 += log.args.amount0;
     }
   }
-
   return {
-    qtd: logs.length,
+    qtd: logsUsdc.length + logsUsdt.length,
     valueReceived: totalAmount0 / BigInt(1e18),
   };
 }
@@ -196,20 +205,29 @@ export async function valuePaidBNB(fromBlock: number, toBlock: number) {
   const contract = new ethers.Contract(POSITION_MANAGERBNB, abi, provider);
 
   // tokenId do NFT de liquidez
-  const eventFilter = contract.filters.DecreaseLiquidity(654147);
+  const eventFilter = contract.filters.DecreaseLiquidity(6141533);
 
-  const logs = await contract.queryFilter(eventFilter, fromBlock, toBlock);
+  const logsUsdc = await contract.queryFilter(eventFilter, fromBlock, toBlock);
 
   let totalAmount0 = 0n;
 
-  for (const log of logs) {
+  for (const log of logsUsdc) {
+    if (log instanceof ethers.EventLog) {
+      totalAmount0 += log.args.amount1;
+    }
+  }
+  const eventFilter2 = contract.filters.DecreaseLiquidity(6141508);
+
+  const logsUsdt = await contract.queryFilter(eventFilter2, fromBlock, toBlock);
+
+  for (const log of logsUsdt) {
     if (log instanceof ethers.EventLog) {
       totalAmount0 += log.args.amount0;
     }
   }
 
   return {
-    qtd: logs.length,
+    qtd: logsUsdc.length + logsUsdt.length,
     valuePaid: totalAmount0 / BigInt(1e18), // assume USDC/USDT 6 decimals
   };
 }
